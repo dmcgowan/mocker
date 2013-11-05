@@ -9,7 +9,7 @@ Installation
 ------------
 
 ~~~~
-git clone git://github.com/dmcgowan/mocker
+git clone https://github.com/dmcgowan/mocker.git
 cd mocker
 export GOPATH=`pwd`
 go get mocker
