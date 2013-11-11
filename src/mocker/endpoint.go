@@ -52,8 +52,10 @@ func (slice UrlValueSlice) Swap(i, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
 }
 
-func calculateHash(values url.Values) string {
+func calculateHash(values url.Values, path string) string {
 	hash := sha1.New()
+	hash.Write([]byte(path))
+	hash.Write([]byte{0x00})
 	if len(values) > 0 {
 		if len(values) == 1 {
 			for key, value := range values {
@@ -80,21 +82,20 @@ func calculateHash(values url.Values) string {
 	return string(hash.Sum([]byte{0x00}))
 }
 
-func NewEndpoint(req *http.Request) *Endpoint {
+func NewEndpoint() *Endpoint {
 	endpoint := new(Endpoint)
 	endpoint.Endpoints = make(map[string]*Response)
-	endpoint.AddResponse(req)
 	return endpoint
 }
 
-func (endpoint *Endpoint) AddResponse(req *http.Request) {
+func (endpoint *Endpoint) AddResponse(req *http.Request, path string) {
 	response := new(Response)
 	response.ContentType = req.Header.Get("Content-Type")
 	response.Content, _ = ioutil.ReadAll(req.Body)
-	endpoint.Endpoints[calculateHash(req.URL.Query())] = response
+	endpoint.Endpoints[calculateHash(req.URL.Query(), path)] = response
 }
 
-func (endpoint *Endpoint) Lookup(req *http.Request) (*Response, bool) {
-	r, rOk := endpoint.Endpoints[calculateHash(req.URL.Query())]
+func (endpoint *Endpoint) Lookup(req *http.Request, path string) (*Response, bool) {
+	r, rOk := endpoint.Endpoints[calculateHash(req.URL.Query(), path)]
 	return r, rOk
 }

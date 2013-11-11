@@ -21,9 +21,14 @@ func NewMockApi() *MockApi {
 
 func (api *MockApi) Register(router *mux.Router) {
 	router.HandleFunc("/response/{status:[2345][0-9][0-9]}", api.ResponseHandler).Methods("GET")
+	router.HandleFunc("/response/{status:[2345][0-9][0-9]}/{path:[- \\w\\/]+}", api.ResponseHandler).Methods("GET")
+
 	router.HandleFunc("/mock", api.MockHandler).Methods("POST")
 	router.HandleFunc("/mock/{endpoint}", api.MockEndpointHandler).Methods("POST")
+	router.HandleFunc("/mock/{endpoint}/{path:[- \\w\\/]+}", api.MockEndpointHandler).Methods("POST")
+
 	router.HandleFunc("/endpoint/{endpoint}", api.EndpointHandler).Methods("GET")
+	router.HandleFunc("/endpoint/{endpoint}/{path:[- \\w\\/]+}", api.EndpointHandler).Methods("GET")
 }
 
 // /response/{status:[2345][0-9][0-9]}
@@ -39,7 +44,9 @@ func (api *MockApi) MockHandler(rw http.ResponseWriter, req *http.Request) {
 	api.EndpointsMutex.Lock()
 	defer api.EndpointsMutex.Unlock()
 	endpointName := uuid.NewUUID().String()
-	api.Endpoints[endpointName] = NewEndpoint(req)
+	endpoint := NewEndpoint()
+	endpoint.AddResponse(req, "")
+	api.Endpoints[endpointName] = endpoint
 	rw.WriteHeader(http.StatusOK)
 	rw.Write([]byte(endpointName))
 }
@@ -49,16 +56,29 @@ func (api *MockApi) MockHandler(rw http.ResponseWriter, req *http.Request) {
 func (api *MockApi) MockEndpointHandler(rw http.ResponseWriter, req *http.Request) {
 	api.EndpointsMutex.Lock()
 	defer api.EndpointsMutex.Unlock()
-	endpointName := mux.Vars(req)["endpoint"]
+	vars := mux.Vars(req)
+	endpointName := vars["endpoint"]
+	path := vars["path"]
 	endpoint, endpointOk := api.Endpoints[endpointName]
 	if !endpointOk {
-		endpoint := NewEndpoint(req)
+		endpoint = NewEndpoint()
 		api.Endpoints[endpointName] = endpoint
-	} else {
-		endpoint.AddResponse(req)
 	}
+	endpoint.AddResponse(req, path)
 	rw.WriteHeader(http.StatusOK)
 	rw.Write([]byte(endpointName))
+}
+
+func (api *MockApi) serveEndpoint(endpoint *Endpoint, rw http.ResponseWriter, req *http.Request) {
+	path := mux.Vars(req)["path"]
+	response, responseOk := endpoint.Lookup(req, path)
+	if !responseOk {
+		http.Error(rw, "No response for given parameters", http.StatusBadRequest)
+		return
+	}
+	rw.Header().Set("Content-Type", response.ContentType)
+	rw.WriteHeader(http.StatusOK)
+	rw.Write(response.Content)
 }
 
 // /endpoint/{endpoint}
@@ -70,12 +90,5 @@ func (api *MockApi) EndpointHandler(rw http.ResponseWriter, req *http.Request) {
 		http.Error(rw, "Endpoint does not exist", http.StatusNotFound)
 		return
 	}
-	response, responseOk := endpoint.Lookup(req)
-	if !responseOk {
-		http.Error(rw, "No response for given parameters", http.StatusBadRequest)
-		return
-	}
-	rw.Header().Set("Content-Type", response.ContentType)
-	rw.WriteHeader(http.StatusOK)
-	rw.Write(response.Content)
+	api.serveEndpoint(endpoint, rw, req)
 }
