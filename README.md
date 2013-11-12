@@ -21,25 +21,40 @@ API
 ---
 
 ### Create a new endpoint
-`POST /mock`
+`POST /mock[?optional query parameters]`
 
-Returns the new endpoint.  The content posted and content-type will be returned by endpoint when given the identifier and the same query string parameters.
+Returns a new endpoint identifier.  The content posted and content-type will be returned by endpoint when given the identifier, no additional path, and using the same query parameters.  Additional content may be added to the endpoint by posting updates with different path/query parameters.
 
 ### Adds to or updates endpoint
-`POST /mock/{endpoint}`
+`POST /mock/{endpoint}[/optional path][?optional query parameters)]`
 
-Returns the given endpoint.  The content posted and content-type will be returned by endpoint when given the identifier and the same query string parameters.
+Returns the given endpoint.  The content posted and content-type will be returned by endpoint when given the identifier and the same path/query parameters.
 
 ### Make request to endpoint
-`GET /endpoint/{endpoint}`
+`GET /endpoint/{endpoint}[/optional path][?optional query parameters)]`
 
-Returns the content-type and content for the endpoint with the same query string parameters
+Returns the content-type and content for the endpoint with the same path/query parameters
 
 Returns 404 if endpoint does not exist
 
-Returns 400 if endpoint exists but no content with the given query string parameters exist
+Returns 400 if endpoint exists but no content with the given path/query parameters exist
 
 ### Simple response code
-`GET /response/{status:int}`
+`GET /response/{status:int}[/optional path]`
 
 Returns the status code specified
+
+### Simple timeout/latency
+`GET /timeout/{timeout:int}[/optional path]`
+
+Returns 200 after specified timeout in ms
+
+### Normal distribution timeout/latency
+
+`GET /timeout/{min:int},{median:int},{max:int}[/optional path]`
+
+Returns 200 after a random amount of time on a normal distribution
+ - approximately 1% of requests will be min
+ - approximately 1% of requests will be max
+ - approximately 75% of requests will be closer to median than min or max
+
