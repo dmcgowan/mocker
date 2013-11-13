@@ -39,6 +39,21 @@ Returns 404 if endpoint does not exist
 
 Returns 400 if endpoint exists but no content with the given path/query parameters exist
 
+### Endpoint Settings
+
+`POST /settings/{endpoint}
+
+Values (Form or Query)
+ - `latency`
+   - static: Use `latency_ms` for this endpoint
+   - normal: Use normal random latency distribution using `latency_min_ms` `latency_median_ms` and `latency_max_ms`
+   - none: No latency
+ - `latency_ms` static latency value in milliseconds
+ - `latency_min_ms`  Lower bound (approx 1%) of normal latency in milliseconds
+ - `latency_median_ms` Median value of normal latency in milliseconds
+ - `latency-max_ms` Upper bound (approx 1%)  of normal latency in milliseconds
+
+
 ### Simple response code
 `GET /response/{status:int}[/optional path]`
 
@@ -57,4 +72,18 @@ Returns 200 after a random amount of time on a normal distribution
  - approximately 1% of requests will be min
  - approximately 1% of requests will be max
  - approximately 75% of requests will be closer to median than min or max
+
+### Normal Latency Distribution
+Example histogram of a normal distribution for 100 random latencies with minimum 3ms, median 17ms, and max 56ms
+~~~~
+|
+|                 ****
+|            ****************
+|        ************************** *
+|   ************************************** *********** ** **
+|______________________________________________________________________________________
+    |               |                                      |
+   3ms            17ms                                    56ms
+   Min            Median                                  Max
+~~~~
 
