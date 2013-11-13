@@ -2,10 +2,12 @@ package main
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type MockApi struct {
@@ -34,6 +36,8 @@ func (api *MockApi) Register(router *mux.Router) {
 
 	router.HandleFunc("/endpoint/{endpoint}", api.EndpointHandler).Methods("GET")
 	router.HandleFunc("/endpoint/{endpoint}/{path:[- \\w\\/]+}", api.EndpointHandler).Methods("GET")
+
+	router.HandleFunc("/settings/{endpoint}", api.SettingsHandler).Methods("GET", "POST")
 }
 
 // /response/{status:[2345][0-9][0-9]}
@@ -81,6 +85,7 @@ func (api *MockApi) serveEndpoint(endpoint *Endpoint, rw http.ResponseWriter, re
 		http.Error(rw, "No response for given parameters", http.StatusBadRequest)
 		return
 	}
+	endpoint.LatencyInjector()
 	rw.Header().Set("Content-Type", response.ContentType)
 	rw.WriteHeader(http.StatusOK)
 	rw.Write(response.Content)
@@ -96,4 +101,59 @@ func (api *MockApi) EndpointHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	api.serveEndpoint(endpoint, rw, req)
+}
+
+// /settings/{endpoint}
+// Sets a value for the given endpoint
+func (api *MockApi) SettingsHandler(rw http.ResponseWriter, req *http.Request) {
+	api.EndpointsMutex.Lock()
+	defer api.EndpointsMutex.Unlock()
+	endpointName := mux.Vars(req)["endpoint"]
+	endpoint, endpointOk := api.Endpoints[endpointName]
+	if !endpointOk {
+		http.Error(rw, "Endpoint does not exist", http.StatusNotFound)
+		return
+	}
+	latency := req.FormValue("latency")
+	if latency != "" {
+		if latency == "static" {
+			latencyMsStr := req.FormValue("latency_ms")
+			latencyMs, latencyMsErr := strconv.ParseInt(latencyMsStr, 10, 64)
+			if latencyMsErr != nil {
+				fmt.Fprintf(rw, "Invalid static latency valid %q\n", latencyMsErr.Error())
+			}
+			endpoint.SetLatencyInjector(NewStaticLatencyInjector(latencyMs))
+		} else if latency == "normal" {
+			latencyMinMsStr := req.FormValue("latency_min_ms")
+			latencyMedianMsStr := req.FormValue("latency_median_ms")
+			latencyMaxMsStr := req.FormValue("latency_max_ms")
+			latencyMinMs, latencyMinMsErr := strconv.ParseInt(latencyMinMsStr, 10, 64)
+			latencyMedianMs, latencyMedianMsErr := strconv.ParseInt(latencyMedianMsStr, 10, 64)
+			latencyMaxMs, latencyMaxMsErr := strconv.ParseInt(latencyMaxMsStr, 10, 64)
+			hasLatencyErr := (latencyMinMsErr != nil || latencyMedianMsErr != nil || latencyMaxMsErr != nil)
+			if hasLatencyErr {
+				rw.WriteHeader(http.StatusBadRequest)
+			}
+			if latencyMinMsErr != nil {
+				fmt.Fprintf(rw, "Invalid minimum latency valid %q\n", latencyMinMsErr.Error())
+			}
+			if latencyMedianMsErr != nil {
+				fmt.Fprintf(rw, "Invalid median latency valid %q\n", latencyMedianMsErr.Error())
+			}
+			if latencyMaxMsErr != nil {
+				fmt.Fprintf(rw, "Invalid maximum latency valid %q\n", latencyMaxMsErr.Error())
+			}
+			if hasLatencyErr {
+				return
+			}
+			endpoint.SetLatencyInjector(NewNormalLatencyInjector(time.Now().UTC().UnixNano(), float64(latencyMinMs), float64(latencyMedianMs), float64(latencyMaxMs)))
+		} else if latency == "none" {
+			endpoint.SetLatencyInjector(NewNoLatencyInjector())
+		} else {
+			rw.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(rw, "Invalid latency %q\n", latency)
+			return
+		}
+	}
+	rw.WriteHeader(http.StatusOK)
 }

@@ -16,6 +16,7 @@ type Response struct {
 
 type Endpoint struct {
 	Endpoints map[string]*Response
+	LatencyInjector
 }
 
 func addSortedKeys(values []string, h hash.Hash) {
@@ -85,6 +86,7 @@ func calculateHash(values url.Values, path string) string {
 func NewEndpoint() *Endpoint {
 	endpoint := new(Endpoint)
 	endpoint.Endpoints = make(map[string]*Response)
+	endpoint.LatencyInjector = NewNoLatencyInjector()
 	return endpoint
 }
 
@@ -98,4 +100,8 @@ func (endpoint *Endpoint) AddResponse(req *http.Request, path string) {
 func (endpoint *Endpoint) Lookup(req *http.Request, path string) (*Response, bool) {
 	r, rOk := endpoint.Endpoints[calculateHash(req.URL.Query(), path)]
 	return r, rOk
+}
+
+func (endpoint *Endpoint) SetLatencyInjector(injector LatencyInjector) {
+	endpoint.LatencyInjector = injector
 }
