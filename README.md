@@ -3,19 +3,20 @@ Mocker
 
 A simple service to mock rest apis
 
-Currently supports mocking GET requests only.  Mocker respects and enforces query string parameters.  Two requests to the same endpoint with different query string parameters may return different content as long as content is set for both sets of parameters.
+Mocker respects and enforces query string parameters.  Two requests to the same endpoint with different query string parameters may return different content as long as content is set for both sets of parameters.
 
 Installation
 ------------
 
 ~~~~
-git clone https://github.com/dmcgowan/mocker.git
-cd mocker
-export GOPATH=`pwd`
-go get mocker
-go install mocker
-bin/mocker -port 8080
+# Choose project directory or skip if GOPATH already setup
+export GOPATH=~/Documents/go
+mkdir -p $GOPATH
+
+go get -v github.com/dmcgowan/mocker
+$GOPATH/bin/mocker -port 8080
 ~~~~
+
 
 API
 ---
