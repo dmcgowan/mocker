@@ -22,8 +22,8 @@ func NewMockApi() *MockApi {
 }
 
 func (api *MockApi) Register(router *mux.Router) {
-	router.HandleFunc("/response/{status:[2345][0-9][0-9]}", api.ResponseHandler).Methods("GET")
-	router.HandleFunc("/response/{status:[2345][0-9][0-9]}/{path:[- \\w\\/]+}", api.ResponseHandler).Methods("GET")
+	router.HandleFunc("/response/{status:[2345][0-9][0-9]}", api.ResponseHandler)
+	router.HandleFunc("/response/{status:[2345][0-9][0-9]}/{path:[- \\w\\/]+}", api.ResponseHandler)
 
 	router.HandleFunc("/timeout/{timeout:[0-9]+}", api.TimeoutHandler).Methods("GET")
 	router.HandleFunc("/timeout/{timeout:[0-9]+}/{path:[- \\w\\/]+}", api.TimeoutHandler).Methods("GET")
