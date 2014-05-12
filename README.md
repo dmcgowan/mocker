@@ -42,7 +42,7 @@ Returns 400 if endpoint exists but no content with the given path/query paramete
 
 ### Endpoint Settings
 
-`POST /settings/{endpoint}
+`POST /settings/{endpoint}`
 
 Values (Form or Query)
  - `latency`
